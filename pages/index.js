@@ -20,7 +20,9 @@ function Title(props) {
 }
 
 export default function PaginaInicial() {
-    const [username, setUsername] = React.useState('vitormarcelo');
+    const DEFAULT_AVATAR = 'https://www.nicepng.com/png/detail/781-7812555_anonymous-mask-png-transparent-images-anonymous-icon-red.png';
+    const [username, setUsername] = React.useState('');
+    const [avatar, setAvatar] = React.useState(DEFAULT_AVATAR);
     const router = useRouter();
 
     return (
@@ -29,7 +31,7 @@ export default function PaginaInicial() {
                 styleSheet={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     backgroundColor: appConfig.theme.colors.primary[500],
-                    backgroundImage: 'url(https://virtualbackgrounds.site/wp-content/uploads/2020/08/the-matrix-digital-rain.jpg)',
+                    backgroundImage: `url(${appConfig.background.image})`,
                     backgroundRepeat: 'no-repeat', backgroundSize: 'cover', backgroundBlendMode: 'multiply',
                 }}
             >
@@ -86,6 +88,12 @@ export default function PaginaInicial() {
                             value={username}
                             onChange={function(event) {
                                 const value = event.target.value;
+
+                                if (value.length > 2) {
+                                    setAvatar(`https://github.com/${username}.png`);
+                                } else {
+                                    setAvatar(DEFAULT_AVATAR);
+                                }
                                 setUsername(value);
                             }}
                         />
@@ -125,7 +133,7 @@ export default function PaginaInicial() {
                                 borderRadius: '50%',
                                 marginBottom: '16px',
                             }}
-                            src={`https://github.com/${username}.png`}
+                            src={avatar}
                         />
                         <Text
                             variant="body4"
