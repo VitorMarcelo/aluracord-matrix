@@ -1,20 +1,61 @@
-import { Box, Text, TextField, Image, Button } from '@skynexui/components';
+import { Box, Text, TextField, Button } from '@skynexui/components';
 import React from 'react';
 import appConfig from '../config.json';
+import { createClient } from "@supabase/supabase-js";
+import { useRouter } from "next/router";
+import { ButtonSendSticker } from "../src/components/ButtonSendSticker";
+import { MessageList } from "../src/components/MessageList";
+
+
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlhdCI6MTY0MzQwNTE2MCwiZXhwIjoxOTU4OTgxMTYwfQ.kTVm7rHS1Pfg721Vz7o3FezZPBssnlJolwX_LRWWxeg';
+const SUPABASE_URL = 'https://psphkiqwgsqipzdaygpb.supabase.co';
+const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function listenMessagesRealTime(addMessage) {
+    return supabaseClient
+                .from('mensagens')
+                .on('INSERT', (message) => {
+                    addMessage(message.new);
+                })
+                .subscribe();
+
+}
 
 export default function ChatPage() {
+    const router = useRouter();
+    const logedUser = router.query.username;
     const [message, setMessage] = React.useState('');
     const [messageList, setMessageList] = React.useState([]);
 
+    React.useEffect(() => {
+        supabaseClient
+                .from('mensagens')
+                .select('*')
+                .order('id', {ascending: false})
+                .then(({data}) => {
+                    setMessageList(data);
+                });
+
+        listenMessagesRealTime((newMessage) => {
+            setMessageList((list) => {
+                return [newMessage, ...list];
+            });
+        });
+    }, []);
+
     function handleNewMessage(newMessage) {
         const message = {
-            id: messageList.length,
-            from: 'anonimo',
-            text: newMessage,
-            italic: false
+            de: logedUser,
+            texto: newMessage
         };
 
-        setMessageList([message, ...messageList]);
+        supabaseClient
+                .from('mensagens')
+                .insert([message])
+                .then(({data}) => {
+                    // setMessageList([data[0], ...messageList]);
+                });
+
         setMessage('');
     }
 
@@ -62,7 +103,7 @@ export default function ChatPage() {
                         padding: '16px',
                     }}
                 >
-                    <MessageList messages={messageList} handleDeleteMessage={handleDeleteMessage}/>
+                    <MessageList messages={messageList} handleDeleteMessage={(handleDeleteMessage)}/>
 
                     <Box
                         as="form"
@@ -96,6 +137,9 @@ export default function ChatPage() {
                                 color: appConfig.theme.colors.neutrals[200],
                             }}
                         />
+                        <ButtonSendSticker 
+                            onStickerClick={(sticker) => handleNewMessage(`:sticker: ${sticker}`)}
+                        />
                     </Box>
                 </Box>
             </Box>
@@ -118,83 +162,5 @@ function Header() {
                 />
             </Box>
         </>
-    )
-}
-
-function MessageList(props) {
-    return (
-        <Box
-            tag="ul"
-            styleSheet={{
-                overflow: 'scroll',
-                display: 'flex',
-                flexDirection: 'column-reverse',
-                flex: 1,
-                color: appConfig.theme.colors.neutrals["000"],
-                marginBottom: '16px',
-            }}
-        >
-            {props.messages.map((message) => {
-                return (
-                    <Text
-                        key={message.id}
-                        tag="li"
-                        styleSheet={{
-                            color: appConfig.theme.colors.neutrals[(message.italic ? '300' : '000')],
-                            fontStyle: (message.italic ? 'italic' : 'normal'),
-                            borderRadius: '5px',
-                            padding: '6px',
-                            marginBottom: '12px',
-                            hover: {
-                                backgroundColor: appConfig.theme.colors.neutrals[700],
-                            }
-                        }}
-                    >
-                        <Box
-                            styleSheet={{
-                                marginBottom: '8px',
-                            }}
-                        >
-                            <Image
-                                styleSheet={{
-                                    width: '20px',
-                                    height: '20px',
-                                    borderRadius: '50%',
-                                    display: 'inline-block',
-                                    marginRight: '8px',
-                                }}
-                                src={`https://github.com/vanessametonini.png`}
-                            />
-                            <Text tag="strong"
-                                styleSheet={{
-                                    fontStyle: 'normal',
-                                    color: appConfig.theme.colors.neutrals['000']
-                                }}
-                            >
-                                {message.from}
-                            </Text>
-                            <Text
-                                styleSheet={{
-                                    fontSize: '10px',
-                                    marginLeft: '8px',
-                                    color: appConfig.theme.colors.neutrals[300],
-                                }}
-                                tag="span"
-                            >
-                                {(new Date().toLocaleDateString())}
-                            </Text>
-                            <Button
-                                onClick={()=> {props.handleDeleteMessage(props.messages, message)}}
-                                variant='tertiary'
-                                colorVariant='negative'
-                                label='Deletar'
-                            />
-                        </Box>
-                        {message.text}
-                    </Text>
-                );
-            })}
-
-        </Box>
     )
 }
